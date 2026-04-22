@@ -1,0 +1,42 @@
+# ── Raw data (too large for git) ─────────────────────────────
+hg19/
+filtered_feature_bc_matrix/
+src/data/
+
+# ── Preprocessed checkpoints & trained models (100–300 MB each)
+*.h5ad
+pbmc10k_scvi_model/
+
+# ── Colab artefacts ───────────────────────────────────────────
+r_library.zip
+
+# ── Generated outputs (reproducible from pipeline) ───────────
+src/figures/
+src/results/
+logs/
+
+# ── Python ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+dist/
+build/
+*.cache
+
+# ── Jupyter ───────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ── R ─────────────────────────────────────────────────────────
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# ── macOS ─────────────────────────────────────────────────────
+.DS_Store
