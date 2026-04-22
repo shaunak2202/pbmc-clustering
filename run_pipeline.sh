@@ -19,6 +19,9 @@
 
 set -euo pipefail
 
+HAS_R=false
+if command -v Rscript &>/dev/null; then HAS_R=true; fi
+
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_DIR="$REPO_DIR/src"
 LOG_DIR="$REPO_DIR/logs"
@@ -49,15 +52,27 @@ ok $((SECONDS - T))
 
 # ── Step 2: SC3 for PBMC 3k ──────────────────────────────────
 step 2 "SC3 clustering — PBMC 3k  (reads checkpoint → sc3_labels.csv)"
-T=$SECONDS
-Rscript "$SRC_DIR/sc3_3k.R" 2>&1 | tee "$LOG_DIR/sc3_3k.log" || fail sc3_3k
-ok $((SECONDS - T))
+if [ -f "$REPO_DIR/sc3_labels.csv" ] && [ "$HAS_R" = false ]; then
+    echo "  sc3_labels.csv already exists and R is not installed — skipping."
+elif [ "$HAS_R" = true ]; then
+    T=$SECONDS
+    Rscript "$SRC_DIR/sc3_3k.R" 2>&1 | tee "$LOG_DIR/sc3_3k.log" || fail sc3_3k
+    ok $((SECONDS - T))
+else
+    echo "  WARNING: R not installed and sc3_labels.csv not found. SC3 comparison will be skipped."
+fi
 
 # ── Step 3: PBMC 3k baseline pipeline (second pass) ──────────
-step 3 "PBMC 3k — re-run with SC3 labels (loads checkpoint, fast)"
-T=$SECONDS
-python "$SRC_DIR/pbmc_3k.py" 2>&1 | tee "$LOG_DIR/pbmc_3k_pass2.log" || fail pbmc_3k_pass2
-ok $((SECONDS - T))
+# Only needed if R just regenerated the labels; if labels pre-existed, Step 1 already used them.
+if [ "$HAS_R" = true ]; then
+    step 3 "PBMC 3k — re-run with SC3 labels (loads checkpoint, fast)"
+    T=$SECONDS
+    python "$SRC_DIR/pbmc_3k.py" 2>&1 | tee "$LOG_DIR/pbmc_3k_pass2.log" || fail pbmc_3k_pass2
+    ok $((SECONDS - T))
+else
+    step 3 "PBMC 3k — skipped (SC3 labels already incorporated in Step 1)"
+    echo "  Nothing to do."
+fi
 
 # ── Step 4: PBMC 3k + MAGIC pipeline ─────────────────────────
 step 4 "PBMC 3k + MAGIC imputation pipeline"
@@ -73,15 +88,26 @@ ok $((SECONDS - T))
 
 # ── Step 6: SC3 for PBMC 10k ─────────────────────────────────
 step 6 "SC3 clustering — PBMC 10k  (reads checkpoint → sc3_labels_10k.csv)"
-T=$SECONDS
-Rscript "$SRC_DIR/sc3_10k.R" 2>&1 | tee "$LOG_DIR/sc3_10k.log" || fail sc3_10k
-ok $((SECONDS - T))
+if [ -f "$REPO_DIR/sc3_labels_10k.csv" ] && [ "$HAS_R" = false ]; then
+    echo "  sc3_labels_10k.csv already exists and R is not installed — skipping."
+elif [ "$HAS_R" = true ]; then
+    T=$SECONDS
+    Rscript "$SRC_DIR/sc3_10k.R" 2>&1 | tee "$LOG_DIR/sc3_10k.log" || fail sc3_10k
+    ok $((SECONDS - T))
+else
+    echo "  WARNING: R not installed and sc3_labels_10k.csv not found. SC3 comparison will be skipped."
+fi
 
 # ── Step 7: PBMC 10k pipeline (second pass) ──────────────────
-step 7 "PBMC 10k — re-run with SC3 labels (loads checkpoint, fast)"
-T=$SECONDS
-python "$SRC_DIR/pbmc_10k.py" 2>&1 | tee "$LOG_DIR/pbmc_10k_pass2.log" || fail pbmc_10k_pass2
-ok $((SECONDS - T))
+if [ "$HAS_R" = true ]; then
+    step 7 "PBMC 10k — re-run with SC3 labels (loads checkpoint, fast)"
+    T=$SECONDS
+    python "$SRC_DIR/pbmc_10k.py" 2>&1 | tee "$LOG_DIR/pbmc_10k_pass2.log" || fail pbmc_10k_pass2
+    ok $((SECONDS - T))
+else
+    step 7 "PBMC 10k — skipped (SC3 labels already incorporated in Step 5)"
+    echo "  Nothing to do."
+fi
 
 echo -e "\n${GREEN}━━━ All steps complete ━━━${NC}"
 echo "Figures : $SRC_DIR/figures/"
